@@ -20,7 +20,8 @@ format:
 ```{r}
 #| include: false
 
-# пакеты подключаются в первом чанке
+library(tidyverse)
+
 ```
 
 Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
@@ -48,27 +49,99 @@ format:
 
 ```{r}
 # read_csv
+
+df <- read_csv('data/dm.csv')
+
+head(df)
 # select, rename
 # nrow, table, count
+```
+
+```{r}
+# select, rename
+df <- df |> 
+   select('USUBJID', 'AGE', 'SEX', 'ARM') |> 
+   rename('ID'='USUBJID')
+
+head(df)
+# nrow, table, count
+```
+
+```{r}
+# nrow, table, count
+nrow(df)
+```
+
+```{r}
+table(df$ARM)
+```
+
+```{r}
+count(df)
 ```
 
 4. Проверьте, что каждому участнику соответствует ровно одна строка.
    Если идентификатор участника встречается несколько раз, выведите все такие строки.
 
 ```{r}
-# stopifnot, stop
+# stopifnot, stop(?)
+stopifnot(nrow(df)== length(unique(df$ID)))
+
 ```
 
 5. Выведите общее количество людей, оцененных для включения в исследование.
+306
+```{r}
+count(df)
+```
+
 6. Какой процент не прошел скрининг?
+Примерно 17% (16.99346)
+```{r}
+table(df$ARM)
+
+sum(df$ARM == "Screen Failure")/nrow(df)*100
+# mutate
+# factor
+```
+
+```{r}
+'''
+df <- df |> 
+  filter(
+    ARM != "Screen Failure"
+  )
+'''
+```
+
 7. Оставьте участников с группами лечения из вашего варианта.
    Преобразуйте столбец `ARM` в фактор и выведите число участников в каждой группе.
-8. Сохраните финальный датафрейм в переменную `dm`.
 
 ```{r}
 # filter
-# mutate
-# factor
+df <- df |> 
+   filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+```
+Стало 84
+
+```{r}
+# mutate #factor
+df <- df |> 
+   mutate(ARM = factor(ARM))
+
+table(df$ARM)
+
+```
+
+Xanomeline High Dose  Xanomeline Low Dose 
+                  41                   43 
+8. Сохраните финальный датафрейм в переменную `dm`.
+
+```{r}
+dm <- df
+```
+```{r}
+head(dm)
 ```
 
 ### 1.2. Лабораторные измерения
