@@ -24,7 +24,6 @@ format:
 #| include: false
 
 library(tidyverse)
-
 ```
 
 Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
@@ -62,9 +61,9 @@ head(df)
 
 ```{r}
 # select, rename
-df <- df |> 
-   select('USUBJID', 'AGE', 'SEX', 'ARM') |> 
-   rename('ID'='USUBJID')
+df <- df |>
+  select('USUBJID', 'AGE', 'SEX', 'ARM') |>
+  rename('ID' = 'USUBJID')
 
 head(df)
 # nrow, table, count
@@ -88,8 +87,7 @@ count(df)
 
 ```{r}
 # stopifnot, stop(?)
-stopifnot(nrow(df)== length(unique(df$ID)))
-
+stopifnot(nrow(df) == length(unique(df$ID)))
 ```
 
 5. Выведите общее количество людей, оцененных для включения в исследование.
@@ -103,18 +101,20 @@ count(df)
 ```{r}
 table(df$ARM)
 
-sum(df$ARM == "Screen Failure")/nrow(df)*100
+sum(df$ARM == "Screen Failure") / nrow(df) * 100
 # mutate
 # factor
 ```
 
 ```{r}
-'''
+''
+'
 df <- df |> 
   filter(
     ARM != "Screen Failure"
   )
-'''
+'
+''
 ```
 
 7. Оставьте участников с группами лечения из вашего варианта.
@@ -122,18 +122,17 @@ df <- df |>
 
 ```{r}
 # filter
-df <- df |> 
-   filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+df <- df |>
+  filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
 ```
 Стало 84
 
 ```{r}
 # mutate #factor
-df <- df |> 
-   mutate(ARM = factor(ARM))
+df <- df |>
+  mutate(ARM = factor(ARM))
 
 table(df$ARM)
-
 ```
 
 Xanomeline High Dose  Xanomeline Low Dose 
@@ -262,11 +261,11 @@ head(dm)
 
 ```{r}
 gf <- read_csv("data/gf.csv") |>
-   select(ID = USUBJID, GFORRES, GFSYM, GFPVRID, VISIT)
-gf |> 
-   count(ID) |> 
-   dplyr::pull(n) |> #немножко погуглила
-   range()
+  select(ID = USUBJID, GFORRES, GFSYM, GFPVRID, VISIT)
+gf |>
+  count(ID) |>
+  dplyr::pull(n) |> #немножко погуглила
+  range()
 ```
 
 3. Оставьте только участников своей команды.
