@@ -264,7 +264,7 @@ gf <- read_csv("data/gf.csv") |>
   select(ID = USUBJID, GFORRES, GFSYM, GFPVRID, VISIT)
 gf |>
   count(ID) |>
-  dplyr::pull(n) |> #немножко погуглила
+  pull(n) |> #немножко погуглила
   range()
 ```
 
@@ -273,8 +273,9 @@ gf |>
 4. Оставьте только ген `APOE` и варианты с идентификаторами `rs429358` и `rs7412`.
 
 ```{r}
-# left_join, semi_join
-# filter
+gf <- gf |>
+  semi_join(dm, by = 'ID') |>
+  filter(GFSYM == "APOE" & (GFPVRID == "rs429358" | GFPVRID == "rs7412"))
 ```
 
 5. По таблице ниже определите генотип APOE для каждого участника.
@@ -294,9 +295,20 @@ gf |>
    Идентификатор участника должен находиться в столбце `ID`.
 
 ```{r}
-# pivot_wider
-# if_else, case_when
-# count
+gf_wide <- gf |>
+  pivot_wider(names_from = GFPVRID, values_from = GFORRES) |>
+  mutate(
+    `Генотип APOE` = case_when(
+      rs429358 == 'T/T' & rs7412 == 'T/T' ~ 'ε2/ε2',
+      rs429358 == 'T/T' & rs7412 == 'C/T' ~ 'ε2/ε3',
+      rs429358 == 'T/C' & rs7412 == 'C/T' ~ 'ε2/ε4',
+      rs429358 == 'T/T' & rs7412 == 'C/C' ~ 'ε3/ε3',
+      rs429358 == 'T/C' & rs7412 == 'C/C' ~ 'ε3/ε4',
+      rs429358 == 'C/C' & rs7412 == 'C/C' ~ 'ε4/ε4',
+      .default = NA
+    )
+  )
+gf_wide |> count(`Генотип APOE`)
 ```
 
 8. Проверьте, что `gf_wide` содержит ровно одну строку на участника.
