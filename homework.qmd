@@ -1,9 +1,9 @@
 ---
 title: Домашнее задание по Автоматизации обработки данных
 author:
-   - name: Имя Студента 1
-     url: https://github.com/github-username-of-author-1
-     roles: Координатор
+   - name: Мария Матеренчук
+     url: https://github.com/gigithub.com/MariaMatter
+     roles: Координатор, Лабораторные изменения (1.2)
    - name: Скворцова Ксения
      url: https://github.com/Ksenia-Skvortsova
      roles: Пациенты (1.1)
