@@ -116,9 +116,9 @@ sum(df$ARM == "Screen Failure") / nrow(df) * 100
 ```{r}
 # filter
 df <- df |>
-  filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+  filter(ARM =='Xanomeline Low Dose' | ARM == 'Xanomeline High Dose')
 ```
-Стало 84
+Стало 168
 
 ```{r}
 # mutate #factor
@@ -129,7 +129,7 @@ table(df$ARM)
 ```
 
 Xanomeline High Dose  Xanomeline Low Dose 
-                  41                   43 
+                  84                   84 
 8. Сохраните финальный датафрейм в переменную `dm`.
 
 ```{r}
