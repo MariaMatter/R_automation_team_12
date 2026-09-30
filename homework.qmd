@@ -454,6 +454,16 @@ stopifnot(!anyDuplicated(all_data$ID))
 
 Для каждого столбца итогового датафрейма выведите число непустых и число пропущенных значений.
 
+```{r}
+values_presence <- data.frame(
+  column = names(all_data),
+  present = sapply(all_data, function(x) sum(!is.na(x))),
+  missing = sapply(all_data, function(x) sum(is.na(x)))
+)
+
+values_presence
+```
+
 ## 3. Описательные статистики и отчёт
 
 Каждый выполняет свой подраздел в отдельной ветке, используя объединенные данные.
