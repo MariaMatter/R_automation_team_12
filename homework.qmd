@@ -7,6 +7,9 @@ author:
    - name: Скворцова Ксения
      url: https://github.com/Ksenia-Skvortsova
      roles: Пациенты (1.1)
+   - name: Марасанова Екатерина
+     url: https://github.com/mrsnightkin
+     roles: Генотип APOE (1.4)
 format:
   html:
     embed-resources: true
@@ -21,12 +24,11 @@ format:
 #| include: false
 
 library(tidyverse)
-
 ```
 
 Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
 Каждая команда анализирует только группы и параметры, указанные для её варианта.
-Напишите номер своего варианта и замените этот текст описанием, какие показатели и на каких визитах будут анализироваться.
+Вариант 12. Группы лечения: Xanomeline Low Dose, Xanomeline High Dose. Лабораторные показатели HGB, TSH. Визит для веса: WEEK 4.
 
 ## 1. Импорт и очистка данных
 
@@ -59,9 +61,9 @@ head(df)
 
 ```{r}
 # select, rename
-df <- df |> 
-   select('USUBJID', 'AGE', 'SEX', 'ARM') |> 
-   rename('ID'='USUBJID')
+df <- df |>
+  select('USUBJID', 'AGE', 'SEX', 'ARM') |>
+  rename('ID' = 'USUBJID')
 
 head(df)
 # nrow, table, count
@@ -85,8 +87,7 @@ count(df)
 
 ```{r}
 # stopifnot, stop(?)
-stopifnot(nrow(df)== length(unique(df$ID)))
-
+stopifnot(nrow(df) == length(unique(df$ID)))
 ```
 
 5. Выведите общее количество людей, оцененных для включения в исследование.
@@ -100,7 +101,7 @@ count(df)
 ```{r}
 table(df$ARM)
 
-sum(df$ARM == "Screen Failure")/nrow(df)*100
+sum(df$ARM == "Screen Failure") / nrow(df) * 100
 # mutate
 # factor
 ```
@@ -111,18 +112,17 @@ sum(df$ARM == "Screen Failure")/nrow(df)*100
 
 ```{r}
 # filter
-df <- df |> 
-   filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+df <- df |>
+  filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
 ```
 Стало 84
 
 ```{r}
 # mutate #factor
-df <- df |> 
-   mutate(ARM = factor(ARM))
+df <- df |>
+  mutate(ARM = factor(ARM))
 
 table(df$ARM)
-
 ```
 
 Xanomeline High Dose  Xanomeline Low Dose 
@@ -245,12 +245,17 @@ head(dm)
 
 1. Импортируйте данные.
 2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
+У данных длинный формат, так как на одного участника приходится несколько строк с результатами генотипа по нескольким разным генам и их полиморфизмам.
    Какое минимальное и максимальное число строк на одного участника?
+Минимальное число - 12, максимальное - тоже 12. 
 
 ```{r}
-# read_csv
-# select, rename
-# count
+gf <- read_csv("data/gf.csv") |>
+  select(ID = USUBJID, GFORRES, GFSYM, GFPVRID, VISIT)
+gf |>
+  count(ID) |>
+  pull(n) |> #немножко погуглила
+  range()
 ```
 
 3. Оставьте только участников своей команды.
@@ -258,8 +263,9 @@ head(dm)
 4. Оставьте только ген `APOE` и варианты с идентификаторами `rs429358` и `rs7412`.
 
 ```{r}
-# left_join, semi_join
-# filter
+gf <- gf |>
+  semi_join(dm, by = 'ID') |>
+  filter(GFSYM == "APOE" & (GFPVRID == "rs429358" | GFPVRID == "rs7412"))
 ```
 
 5. По таблице ниже определите генотип APOE для каждого участника.
@@ -279,15 +285,33 @@ head(dm)
    Идентификатор участника должен находиться в столбце `ID`.
 
 ```{r}
-# pivot_wider
-# if_else, case_when
-# count
+gf_wide <- gf |>
+  pivot_wider(names_from = GFPVRID, values_from = GFORRES) |>
+  mutate(
+    `Генотип APOE` = case_when(
+      rs429358 == 'T/T' & rs7412 == 'T/T' ~ 'ε2/ε2',
+      rs429358 == 'T/T' & rs7412 == 'C/T' ~ 'ε2/ε3',
+      rs429358 == 'T/C' & rs7412 == 'C/T' ~ 'ε2/ε4',
+      rs429358 == 'T/T' & rs7412 == 'C/C' ~ 'ε3/ε3',
+      rs429358 == 'T/C' & rs7412 == 'C/C' ~ 'ε3/ε4',
+      rs429358 == 'C/C' & rs7412 == 'C/C' ~ 'ε4/ε4',
+      .default = NA
+    )
+  )
+gf_wide |> count(`Генотип APOE`)
 ```
 
 8. Проверьте, что `gf_wide` содержит ровно одну строку на участника.
 
 ```{r}
-# stopifnot, stop
+stopifnot(
+  "Есть дубликаты!" = gf_wide |>
+    count(ID) |>
+    pull(n) |>
+    max() ==
+    1
+)
+#вероятно есть способ проще, но зато этот я сама придумала :)
 ```
 
 ## 2. Объединение данных
