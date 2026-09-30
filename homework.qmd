@@ -27,6 +27,7 @@ format:
 #| include: false
 
 library(tidyverse)
+library(flextable)
 ```
 
 Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
@@ -157,20 +158,21 @@ head(dm)
 # read_csv
 lab_df <- read.csv('data/lb.csv')
 # select, rename
-lab_df <- lab_df |> 
-   select('USUBJID', 'LBTESTCD', 'LBTEST', 'LBSTRESN', 'VISIT') |> 
-   rename('ID'='USUBJID')
+lab_df <- lab_df |>
+  select('USUBJID', 'LBTESTCD', 'LBTEST', 'LBSTRESN', 'VISIT') |>
+  rename('ID' = 'USUBJID')
 lab_df
 # distinct, count
 ```
 Данные имеют длинный формат, т.к. есть не уникальные строки в колонке ID, которые содержат различную информацию в других столбцах (визит, лабораторный тест, и т.д.).
 
 ```{r}
-lab_df |> 
+lab_df |>
   count(ID) |>
   summarise(
-   min_rows = min(n),
-   max_rows = max(n))
+    min_rows = min(n),
+    max_rows = max(n)
+  )
 ```
 Минимальное число строк на пациента - 12, максимальное - 58
 
@@ -179,15 +181,15 @@ lab_df |>
 
 ```{r}
 #визиты и лабораторные измерения
-lab_df |> 
+lab_df |>
   distinct(VISIT, LBTESTCD, LBTEST)
 ```
 
 ```{r}
 #отдельно визиты с витамином В12
 lab_df |>
-   filter(LBTESTCD == 'VITB12') |>
-   distinct(VISIT)
+  filter(LBTESTCD == 'VITB12') |>
+  distinct(VISIT)
 ```
 
 4. Оставьте только участников своей команды.
@@ -196,7 +198,7 @@ lab_df |>
 ```{r}
 # semi_join
 lab_df_filtered <- lab_df |>
-   semi_join(dm, by = "ID")
+  semi_join(dm, by = "ID")
 lab_df_filtered
 ```
 
@@ -204,8 +206,7 @@ lab_df_filtered
 
 ```{r}
 lab_df_filtered_sc1 <- lab_df_filtered |>
-   filter(VISIT == 'SCREENING 1', 
-   LBTESTCD %in% c('HGB', 'TSH'))
+  filter(VISIT == 'SCREENING 1', LBTESTCD %in% c('HGB', 'TSH'))
 lab_df_filtered_sc1
 ```
 6. После фильтрации выведите число измерений каждого показателя.
@@ -213,7 +214,7 @@ lab_df_filtered_sc1
 ```{r}
 # filter
 lab_df_filtered_sc1 |>
-   count(LBTESTCD)
+  count(LBTESTCD)
 ```
 
 7. Переведите данные в широкий формат и сохраните в переменную `lb_wide`.
@@ -228,8 +229,8 @@ lab_df_filtered_sc1 |>
 lb_wide <- lab_df_filtered_sc1 |>
   select(ID, LBTESTCD, LBSTRESN) |>
   pivot_wider(
-   names_from = LBTESTCD,
-   values_from = LBSTRESN
+    names_from = LBTESTCD,
+    values_from = LBSTRESN
   )
 lb_wide
 ```
@@ -296,7 +297,7 @@ vs <- vs %>%
 vs <- vs %>%
   filter(
     (VISIT == "SCREENING 1" & VSTESTCD %in% c("HEIGHT", "WEIGHT")) |
-    (VISIT == "WEEK 4" & VSTESTCD == "WEIGHT")
+      (VISIT == "WEEK 4" & VSTESTCD == "WEIGHT")
   )
 ```
 
@@ -532,6 +533,33 @@ values_presence
 4. Кратко прокомментируйте результаты, приведённые в таблицах.
 
 ```{r}
+all_data |>
+  group_by(`Генотип APOE`) |>
+  count(ARM)
+
+all_data |>
+  mutate(BMI = `WEIGHT_SCREENING 1` / (`HEIGHT_SCREENING 1` / 100)^2) |>
+  summarise(
+    n = sum(!is.na(BMI)),
+    n_NA = sum(is.na(BMI)),
+    `Mean (SD)` = sprintf(
+      "%.2f (%.2f)", #не обошлось без гугла
+      mean(BMI),
+      sd(BMI)
+    ),
+    `Median [Q1, Q3]` = sprintf(
+      "%.2f [%.2f, %.2f]",
+      median(BMI),
+      quantile(BMI, 0.25),
+      quantile(BMI, 0.75)
+    ),
+    `Min - Max` = sprintf("%.2f - %.2f", min(BMI), max(BMI)),
+    .by = `Генотип APOE`
+  ) |>
+  flextable() |>
+  add_header_row() |>
+  autofit()
+
 # mutate, case_when, group_by, summarise
 # n, mean, median, sd, quantile, IQR
 # flextable
