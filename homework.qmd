@@ -1,15 +1,18 @@
 ---
 title: Домашнее задание по Автоматизации обработки данных
 author:
-   - name: Имя Студента 1
-     url: https://github.com/github-username-of-author-1
-     roles: Координатор
+   - name: Мария Матеренчук
+     url: https://github.com/MariaMatter
+     roles: Координатор, Лабораторные изменения (1.2)
    - name: Скворцова Ксения
      url: https://github.com/Ksenia-Skvortsova
      roles: Пациенты (1.1)
    - name: Валентина Выноградская
      url: https://github.com/valentinabarsegian2026-cmd
      roles: Витальные показатели (1.3)
+   - name: Марасанова Екатерина
+     url: https://github.com/mrsnightkin
+     roles: Генотип APOE (1.4)
 format:
   html:
     embed-resources: true
@@ -24,12 +27,11 @@ format:
 #| include: false
 
 library(tidyverse)
-
 ```
 
 Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
 Каждая команда анализирует только группы и параметры, указанные для её варианта.
-Напишите номер своего варианта и замените этот текст описанием, какие показатели и на каких визитах будут анализироваться.
+Вариант 12. Группы лечения: Xanomeline Low Dose, Xanomeline High Dose. Лабораторные показатели HGB, TSH. Визит для веса: WEEK 4.
 
 ## 1. Импорт и очистка данных
 
@@ -62,9 +64,9 @@ head(df)
 
 ```{r}
 # select, rename
-df <- df |> 
-   select('USUBJID', 'AGE', 'SEX', 'ARM') |> 
-   rename('ID'='USUBJID')
+df <- df |>
+  select('USUBJID', 'AGE', 'SEX', 'ARM') |>
+  rename('ID' = 'USUBJID')
 
 head(df)
 # nrow, table, count
@@ -88,8 +90,7 @@ count(df)
 
 ```{r}
 # stopifnot, stop(?)
-stopifnot(nrow(df)== length(unique(df$ID)))
-
+stopifnot(nrow(df) == length(unique(df$ID)))
 ```
 
 5. Выведите общее количество людей, оцененных для включения в исследование.
@@ -103,7 +104,7 @@ count(df)
 ```{r}
 table(df$ARM)
 
-sum(df$ARM == "Screen Failure")/nrow(df)*100
+sum(df$ARM == "Screen Failure") / nrow(df) * 100
 # mutate
 # factor
 ```
@@ -114,18 +115,17 @@ sum(df$ARM == "Screen Failure")/nrow(df)*100
 
 ```{r}
 # filter
-df <- df |> 
-   filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+df <- df |>
+  filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
 ```
 Стало 84
 
 ```{r}
 # mutate #factor
-df <- df |> 
-   mutate(ARM = factor(ARM))
+df <- df |>
+  mutate(ARM = factor(ARM))
 
 table(df$ARM)
-
 ```
 
 Xanomeline High Dose  Xanomeline Low Dose 
@@ -152,23 +152,68 @@ head(dm)
 1. Импортируйте данные.
 2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
    Какое минимальное и максимальное число строк на одного пациента?
+
+```{r}
+# read_csv
+lab_df <- read.csv('data/lb.csv')
+# select, rename
+lab_df <- lab_df |> 
+   select('USUBJID', 'LBTESTCD', 'LBTEST', 'LBSTRESN', 'VISIT') |> 
+   rename('ID'='USUBJID')
+lab_df
+# distinct, count
+```
+Данные имеют длинный формат, т.к. есть не уникальные строки в колонке ID, которые содержат различную информацию в других столбцах (визит, лабораторный тест, и т.д.).
+
+```{r}
+lab_df |> 
+  count(ID) |>
+  summarise(
+   min_rows = min(n),
+   max_rows = max(n))
+```
+Минимальное число строк на пациента - 12, максимальное - 58
+
 3. На каких визитах выполняли измерения и какие лабораторные показатели измеряли?
    Отдельно выведите или подчеркните визиты, на которых измеряли витамин B12.
 
 ```{r}
-# read_csv
-# select, rename
-# distinct, count
+#визиты и лабораторные измерения
+lab_df |> 
+  distinct(VISIT, LBTESTCD, LBTEST)
+```
+
+```{r}
+#отдельно визиты с витамином В12
+lab_df |>
+   filter(LBTESTCD == 'VITB12') |>
+   distinct(VISIT)
 ```
 
 4. Оставьте только участников своей команды.
    Используйте для этого датафрейм `dm`, созданный координатором в разделе 1.1.
+
+```{r}
+# semi_join
+lab_df_filtered <- lab_df |>
+   semi_join(dm, by = "ID")
+lab_df_filtered
+```
+
 5. Оставьте только два лабораторных показателя своей команды, измеренных на визите `SCREENING 1`.
+
+```{r}
+lab_df_filtered_sc1 <- lab_df_filtered |>
+   filter(VISIT == 'SCREENING 1', 
+   LBTESTCD %in% c('HGB', 'TSH'))
+lab_df_filtered_sc1
+```
 6. После фильтрации выведите число измерений каждого показателя.
 
 ```{r}
-# left_join, semi_join
 # filter
+lab_df_filtered_sc1 |>
+   count(LBTESTCD)
 ```
 
 7. Переведите данные в широкий формат и сохраните в переменную `lb_wide`.
@@ -179,12 +224,21 @@ head(dm)
 # select
 # pivot_wider
 # distinct, count
+
+lb_sc1_wide <- lab_df_filtered_sc1 |>
+  select(ID, LBTESTCD, LBSTRESN) |>
+  pivot_wider(
+   names_from = LBTESTCD,
+   values_from = LBSTRESN
+  )
+lb_sc1_wide
 ```
 
 8. Проверьте, что `lb_wide` содержит ровно одну строку на одного участника.
 
 ```{r}
 # stopifnot, stop
+stopifnot(all(table(lb_sc1_wide$ID) == 1))
 ```
 
 ### 1.3. Витальные показатели
@@ -298,12 +352,17 @@ stopifnot(nrow(vs_wide) == n_distinct(vs_wide$ID))
 
 1. Импортируйте данные.
 2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
+У данных длинный формат, так как на одного участника приходится несколько строк с результатами генотипа по нескольким разным генам и их полиморфизмам.
    Какое минимальное и максимальное число строк на одного участника?
+Минимальное число - 12, максимальное - тоже 12. 
 
 ```{r}
-# read_csv
-# select, rename
-# count
+gf <- read_csv("data/gf.csv") |>
+  select(ID = USUBJID, GFORRES, GFSYM, GFPVRID, VISIT)
+gf |>
+  count(ID) |>
+  pull(n) |> #немножко погуглила
+  range()
 ```
 
 3. Оставьте только участников своей команды.
@@ -311,8 +370,9 @@ stopifnot(nrow(vs_wide) == n_distinct(vs_wide$ID))
 4. Оставьте только ген `APOE` и варианты с идентификаторами `rs429358` и `rs7412`.
 
 ```{r}
-# left_join, semi_join
-# filter
+gf <- gf |>
+  semi_join(dm, by = 'ID') |>
+  filter(GFSYM == "APOE" & (GFPVRID == "rs429358" | GFPVRID == "rs7412"))
 ```
 
 5. По таблице ниже определите генотип APOE для каждого участника.
@@ -332,15 +392,33 @@ stopifnot(nrow(vs_wide) == n_distinct(vs_wide$ID))
    Идентификатор участника должен находиться в столбце `ID`.
 
 ```{r}
-# pivot_wider
-# if_else, case_when
-# count
+gf_wide <- gf |>
+  pivot_wider(names_from = GFPVRID, values_from = GFORRES) |>
+  mutate(
+    `Генотип APOE` = case_when(
+      rs429358 == 'T/T' & rs7412 == 'T/T' ~ 'ε2/ε2',
+      rs429358 == 'T/T' & rs7412 == 'C/T' ~ 'ε2/ε3',
+      rs429358 == 'T/C' & rs7412 == 'C/T' ~ 'ε2/ε4',
+      rs429358 == 'T/T' & rs7412 == 'C/C' ~ 'ε3/ε3',
+      rs429358 == 'T/C' & rs7412 == 'C/C' ~ 'ε3/ε4',
+      rs429358 == 'C/C' & rs7412 == 'C/C' ~ 'ε4/ε4',
+      .default = NA
+    )
+  )
+gf_wide |> count(`Генотип APOE`)
 ```
 
 8. Проверьте, что `gf_wide` содержит ровно одну строку на участника.
 
 ```{r}
-# stopifnot, stop
+stopifnot(
+  "Есть дубликаты!" = gf_wide |>
+    count(ID) |>
+    pull(n) |>
+    max() ==
+    1
+)
+#вероятно есть способ проще, но зато этот я сама придумала :)
 ```
 
 ## 2. Объединение данных
