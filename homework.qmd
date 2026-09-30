@@ -570,12 +570,54 @@ bmi_stat_cat <- final_data |>
 4. Вычислите число аллелей ε4 (0 / 1 / 2) у каждого участника и представьте BMI по этим категориям.
 
 ```{r}
-bmi_stat_cat <- final_data |>
-  count(ARM, BMI_CAT) |>           
-  group_by(ARM) |>   
+final_data_allel <- final_data |> 
   mutate(
-    Percent = round(n / sum(n) * 100, 1)
+    E4_count = str_count(`Генотип APOE`, "4")
   )
+
+```
+
+```{r}
+
+ table(final_data_allel$E4_count) 
+```
+
+```{r}
+genotype_dist <- final_data_allel |> 
+  count(ARM, `Генотип APOE`) |> 
+  group_by(ARM) |> 
+  mutate(
+    percent = round(n / sum(n) * 100, 1)
+  )
+```
+```{r}
+genotype_stats <- final_data_allel %>%
+  group_by(`Генотип APOE`) %>%
+  summarise(
+   n_all = n(),
+    n_missing = sum(is.na(BMI)),
+    Mean = round(mean(BMI), 1),
+    SD = round(sd(BMI), 1), 
+    Median = round(median(BMI), 1), 
+    Median_Q1 = round(quantile(BMI, 0.25), 1), 
+    Median_Q3 = round(quantile(BMI, 0.75), 1),
+    Min = round(min(BMI), 1),
+    Max = round(max(BMI), 1)
+    )
+    
+```
+5. Оформите результаты в таблицы `flextable` с заголовками на русском или английском языке.
+
+```{r}
+flextable(bmi_stat) |> 
+  set_header_labels(
+    ARM = "Группа лечения",
+    N_valid = "N (валидные)",
+    N_missing = "N (пропуски)",
+    Mean_SD = "Среднее (СО), кг/м²",
+    Median_Q1Q3 = "Медиана [25%; 75%], кг/м²",
+    Min_Max = "Мин – Макс, кг/м²"
+  ) 
 ```
 
 ### 3.3. Анализ генотипа
