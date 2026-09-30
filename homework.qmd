@@ -225,20 +225,20 @@ lab_df_filtered_sc1 |>
 # pivot_wider
 # distinct, count
 
-lb_sc1_wide <- lab_df_filtered_sc1 |>
+lb_wide <- lab_df_filtered_sc1 |>
   select(ID, LBTESTCD, LBSTRESN) |>
   pivot_wider(
    names_from = LBTESTCD,
    values_from = LBSTRESN
   )
-lb_sc1_wide
+lb_wide
 ```
 
 8. Проверьте, что `lb_wide` содержит ровно одну строку на одного участника.
 
 ```{r}
 # stopifnot, stop
-stopifnot(all(table(lb_sc1_wide$ID) == 1))
+stopifnot(all(table(lb_wide$ID) == 1))
 ```
 
 ### 1.3. Витальные показатели
@@ -432,6 +432,10 @@ stopifnot(
 
 ```{r}
 # left_join
+all_data <- dm %>%
+  left_join(lb_wide, by = "ID") %>%
+  left_join(vs_wide, by = "ID") %>%
+  left_join(gf_wide, by = "ID")
 ```
 
 Проверьте, что число строк в результате совпадает с числом участников в `dm` и что не появилось повторяющихся значений `ID`.
@@ -439,6 +443,13 @@ stopifnot(
 ```{r}
 # count, nrow
 # stopifnot, stop
+# count, nrow
+
+nrow(dm)
+nrow(all_data)
+
+stopifnot(nrow(all_data) == nrow(dm))
+stopifnot(!anyDuplicated(all_data$ID))
 ```
 
 Для каждого столбца итогового датафрейма выведите число непустых и число пропущенных значений.
