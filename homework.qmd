@@ -514,7 +514,25 @@ values_presence
 
 ```{r}
 # mutate, case_when, group_by, summarise
+
+final_data <- all_data |> 
+  mutate(
+    BMI = `WEIGHT_SCREENING 1` /  ((`HEIGHT_SCREENING 1` / 100) ^ 2),
+
+    BMI_CAT = case_when(
+      BMI >=18.5 & BMI < 25 ~ "Normal",
+      !is.na(BMI) ~ "Abnormal"
+    )
+  )
 # n, mean, median, sd, quantile, IQR
+# flextable
+# см. документацию https://davidgohel.github.io
+```
+
+```{r}
+# n, mean, median, sd, quantile, IQR
+
+
 # flextable
 # см. документацию https://davidgohel.github.io
 ```
