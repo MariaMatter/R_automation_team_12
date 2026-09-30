@@ -7,6 +7,9 @@ author:
    - name: Скворцова Ксения
      url: https://github.com/Ksenia-Skvortsova
      roles: Пациенты (1.1)
+   - name: Валентина Выноградская
+     url: https://github.com/valentinabarsegian2026-cmd
+     roles: Витальные показатели (1.3)
    - name: Марасанова Екатерина
      url: https://github.com/mrsnightkin
      roles: Генотип APOE (1.4)
@@ -251,12 +254,33 @@ stopifnot(all(table(lb_sc1_wide$ID) == 1))
 1. Импортируйте данные.
 2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
    Какое минимальное и максимальное число строк на одного участника?
+
+   Данные представлены в длинном формате: одному участнику соответствует несколько строк с результатами измерений на разных визитах. Минимальное число строк на одного участника — 21, максимальное — 71.
+
 3. На каких визитах измеряли рост (`HEIGHT`) и вес (`WEIGHT`)?
+
+   Рост (HEIGHT) измеряли только на визите SCREENING 1. Вес (WEIGHT) измеряли на визитах SCREENING 1, BASELINE, WEEK 2, WEEK 4, WEEK 6, WEEK 8 и WEEK 12.
 
 ```{r}
 # read_csv
+vs <- read_csv("data/vs.csv")
+
 # select, rename
+vs <- vs %>%
+  select(USUBJID, VSTESTCD, VSSTRESN, VISIT) %>%
+  rename(ID = USUBJID)
+
 # count
+vs %>%
+  count(ID) %>%
+  summarise(
+    min_rows = min(n),
+    max_rows = max(n)
+  )
+
+vs %>%
+  filter(VSTESTCD %in% c("HEIGHT", "WEIGHT")) %>%
+  distinct(VSTESTCD, VISIT)
 ```
 
 4. Оставьте только участников своей команды.
@@ -265,7 +289,15 @@ stopifnot(all(table(lb_sc1_wide$ID) == 1))
 
 ```{r}
 # left_join, semi_join
+vs <- vs %>%
+  semi_join(dm, by = "ID")
+
 # filter
+vs <- vs %>%
+  filter(
+    (VISIT == "SCREENING 1" & VSTESTCD %in% c("HEIGHT", "WEIGHT")) |
+    (VISIT == "WEEK 4" & VSTESTCD == "WEIGHT")
+  )
 ```
 
 6. Переведите данные в широкий формат и сохраните в переменной `vs_wide`.
@@ -274,16 +306,37 @@ stopifnot(all(table(lb_sc1_wide$ID) == 1))
    Идентификатор участника должен находиться в столбце с названием `ID`.
 
 ```{r}
+vs %>%
+  count(ID, VSTESTCD, VISIT)
+
 # select
-# distinct, count
+vs %>%
+  select(ID, VSTESTCD, VISIT, VSSTRESN)
+
 # str_c, paste0
+vs <- vs %>%
+  mutate(measure = str_c(VSTESTCD, VISIT, sep = "_"))
+
+# distinct, count
+vs %>%
+  count(ID, measure) %>%
+  filter(n > 1)
+
 # pivot_wider
+vs_wide <- vs %>%
+  select(ID, measure, VSSTRESN) %>%
+  pivot_wider(
+    names_from = measure,
+    values_from = VSSTRESN
+  )
 ```
 
 7. Проверьте, что `vs_wide` содержит ровно одну строку на участника.
 
 ```{r}
+n_distinct(vs_wide$ID)
 # stopifnot, stop
+stopifnot(nrow(vs_wide) == n_distinct(vs_wide$ID))
 ```
 
 ### 1.4. Генотип APOE
