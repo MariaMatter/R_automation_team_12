@@ -6,13 +6,13 @@ author:
      roles: Координатор, Лабораторные изменения (1.2)
    - name: Скворцова Ксения
      url: https://github.com/Ksenia-Skvortsova
-     roles: Пациенты (1.1)
+     roles: Пациенты (1.1), Анализ витальных показателей (3.2)
    - name: Валентина Выноградская
      url: https://github.com/valentinabarsegian2026-cmd
      roles: Витальные показатели (1.3), Анализ лабораторных результатов (3.1)
    - name: Марасанова Екатерина
      url: https://github.com/mrsnightkin
-     roles: Генотип APOE (1.4)
+     roles: Генотип APOE (1.4), Анализ генотипа (3.3)
 format:
   html:
     embed-resources: true
@@ -162,7 +162,7 @@ lab_df <- read.csv('data/lb.csv')
 lab_df <- lab_df |>
   select('USUBJID', 'LBTESTCD', 'LBTEST', 'LBSTRESN', 'VISIT') |>
   rename('ID' = 'USUBJID')
-lab_df
+head(lab_df)
 # distinct, count
 ```
 Данные имеют длинный формат, т.к. есть не уникальные строки в колонке ID, которые содержат различную информацию в других столбцах (визит, лабораторный тест, и т.д.).
@@ -192,6 +192,7 @@ lab_df |>
   filter(LBTESTCD == 'VITB12') |>
   distinct(VISIT)
 ```
+Витамин B12 измеряли на скрининге 1
 
 4. Оставьте только участников своей команды.
    Используйте для этого датафрейм `dm`, созданный координатором в разделе 1.1.
@@ -200,7 +201,7 @@ lab_df |>
 # semi_join
 lab_df_filtered <- lab_df |>
   semi_join(dm, by = "ID")
-lab_df_filtered
+head(lab_df_filtered)
 ```
 
 5. Оставьте только два лабораторных показателя своей команды, измеренных на визите `SCREENING 1`.
@@ -208,7 +209,7 @@ lab_df_filtered
 ```{r}
 lab_df_filtered_sc1 <- lab_df_filtered |>
   filter(VISIT == 'SCREENING 1', LBTESTCD %in% c('HGB', 'TSH'))
-lab_df_filtered_sc1
+head(lab_df_filtered_sc1)
 ```
 6. После фильтрации выведите число измерений каждого показателя.
 
@@ -463,7 +464,7 @@ values_presence <- data.frame(
   missing = sapply(all_data, function(x) sum(is.na(x)))
 )
 
-values_presence
+flextable(values_presence)
 ```
 
 ## 3. Описательные статистики и отчёт
@@ -489,13 +490,7 @@ values_presence
 4. Кратко прокомментируйте результаты, приведённые в таблицах.
 
 
-# mutate, case_when, group_by, summarise
-# n, mean, median, sd, quantile, IQR
-# round, str_c, paste0
-# flextable
-# см. документацию https://davidgohel.github.io
-
-# 1. Статистики по группам лечения
+#### 1. Статистики по группам лечения
 ```{r}
 lab_stats <- all_data %>%
   group_by(ARM) %>%
@@ -520,7 +515,7 @@ lab_stats
 ```
 
 
-# 2. Создаём группы носителей и неносителей аллеля ε4
+##### 2. Создаём группы носителей и неносителей аллеля ε4
 ```{r}
 all_data <- all_data %>%
   mutate(
@@ -553,7 +548,7 @@ apoe_stats <- all_data %>%
 apoe_stats
 ```
 
-# 3. Оформляем результаты в таблицы
+##### 3. Оформляем результаты в таблицы
 
 ```{r}
 
@@ -633,8 +628,8 @@ apoe_table
 
 ```
 
-# 4. Комментарий по полученным данным
-По группам лечения среднее значение HGB было несколько выше в группе Xanameline High Dose (8.87 mmol/L), чем в группе Xanomeline Low Dose (8.62 mmol/L). Медианы HGB составили 8.87 и 8.62 mmol/L соответственно. Значения TSH в группах лечения были близкими: средние значения составили 1.57 mU/L в группе High Dose и 1.64 mU/L в группе Low Dose.
+##### 4. Комментарий по полученным данным
+По группам лечения среднее значение HGB было несколько выше в группе Xanameline High Dose (8.87 mmol/L), чем в группе Xanomeline Low Dose (8.62 mmol/L). Медианы HGB составили 8.87 и 8.56 mmol/L соответственно. Значения TSH в группах лечения были близкими: средние значения составили 1.57 mU/L в группе High Dose и 1.64 mU/L в группе Low Dose.
 
 При сравнении по носительству аллеля APOE ε4 у носителей среднее значение HGB составило 8.87 mmol/L, а у неносителей — 8.64 mmol/L. Среднее значение TSH у носителей и не носителей одинаково и составляет 1.60 mU/L.
 
@@ -656,10 +651,6 @@ apoe_table
 4. Вычислите число аллелей ε4 (0 / 1 / 2) у каждого участника и представьте BMI по этим категориям.
 5. Оформите результаты в таблицы `flextable` с заголовками на русском или английском языке.
 6. Кратко прокомментируйте результаты, приведённые в таблицах.
-
-```{r}
-library(flextable)
-```
 
 ```{r}
 # mutate, case_when, group_by, summarise
