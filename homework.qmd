@@ -117,7 +117,7 @@ sum(df$ARM == "Screen Failure") / nrow(df) * 100
 ```{r}
 # filter
 df <- df |>
-  filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+  filter(ARM == 'Xanomeline Low Dose' | ARM == 'Xanomeline High Dose')
 ```
 Стало 84
 
@@ -534,36 +534,62 @@ values_presence
 
 ```{r}
 all_data |>
-  group_by(`Генотип APOE`) |>
-  count(ARM)
-
-all_data |>
-  mutate(BMI = `WEIGHT_SCREENING 1` / (`HEIGHT_SCREENING 1` / 100)^2) |>
+  group_by(ARM, `Генотип APOE`) |>
   summarise(
-    n = sum(!is.na(BMI)),
-    n_NA = sum(is.na(BMI)),
+    n = sum(n())
+  ) |>
+  mutate(
+    `percentage, %` = n / sum(n) * 100
+  ) |>
+  ungroup()
+```
+
+```{r}
+stats <- function(data, param) {
+  summarise(
+    data,
+    n = sum(!is.na(.data[[param]])),
+    n_NA = sum(is.na(.data[[param]])),
     `Mean (SD)` = sprintf(
       "%.2f (%.2f)", #не обошлось без гугла
-      mean(BMI),
-      sd(BMI)
+      mean(.data[[param]], na.rm = TRUE),
+      sd(.data[[param]], na.rm = TRUE)
     ),
     `Median [Q1, Q3]` = sprintf(
       "%.2f [%.2f, %.2f]",
-      median(BMI),
-      quantile(BMI, 0.25),
-      quantile(BMI, 0.75)
+      median(.data[[param]], na.rm = TRUE),
+      quantile(.data[[param]], 0.25, na.rm = TRUE),
+      quantile(.data[[param]], 0.75, na.rm = TRUE)
     ),
-    `Min - Max` = sprintf("%.2f - %.2f", min(BMI), max(BMI)),
+    `Min - Max` = sprintf(
+      "%.2f - %.2f",
+      min(.data[[param]], na.rm = TRUE),
+      max(.data[[param]], na.rm = TRUE)
+    ),
     .by = `Генотип APOE`
-  ) |>
-  flextable() |>
-  add_header_row() |>
-  autofit()
+  )
+}
+```
 
-# mutate, case_when, group_by, summarise
-# n, mean, median, sd, quantile, IQR
-# flextable
-# см. документацию https://davidgohel.github.io
+```{r}
+all_data |>
+  mutate(BMI = `WEIGHT_SCREENING 1` / (`HEIGHT_SCREENING 1` / 100)^2) |>
+  (\(df) {
+    stats(df, "BMI") |>
+      left_join(
+        stats(df, "HGB"),
+        by = "Генотип APOE",
+        suffix = c(".BMI", ".HGB")
+      ) |>
+      left_join(stats(df, "TSH"), by = "Генотип APOE", suffix = c("", ".TSH"))
+  })() |>
+  flextable() |>
+  add_header_row(
+    values = c("Генотип", "BMI", "HGB", "TSH"),
+    colwidths = c(1, 5, 5, 5)
+  ) |>
+  align(align = "center", part = "header") |>
+  autofit()
 ```
 
 ## 4. Дополнительные задания
