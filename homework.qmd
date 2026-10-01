@@ -119,7 +119,7 @@ df <- df |>
   filter(ARM == 'Xanomeline Low Dose' | ARM ==  'Xanomeline High Dose')
 df
 ```
-Стало 84
+Стало 168
 
 ```{r}
 # mutate #factor
@@ -130,7 +130,7 @@ table(df$ARM)
 ```
 
 Xanomeline High Dose  Xanomeline Low Dose 
-                  41                   43 
+                  84                   84 
 8. Сохраните финальный датафрейм в переменную `dm`.
 
 ```{r}
@@ -657,11 +657,161 @@ apoe_table
 6. Кратко прокомментируйте результаты, приведённые в таблицах.
 
 ```{r}
+library(flextable)
+```
+
+```{r}
 # mutate, case_when, group_by, summarise
+
+final_data <- all_data |> 
+  mutate(
+    BMI = `WEIGHT_SCREENING 1` /  ((`HEIGHT_SCREENING 1` / 100) ^ 2),
+
+    BMI_CAT = case_when(
+      BMI >=18.5 & BMI < 25 ~ "Normal",
+      !is.na(BMI) ~ "Abnormal"
+    )
+  )
 # n, mean, median, sd, quantile, IQR
 # flextable
 # см. документацию https://davidgohel.github.io
 ```
+3. Представьте BMI по группам лечения в двух вариантах:
+   - как количественный показатель со следующими отформатированными статистиками:
+      - число непустых значений
+      - число пропущенных значений
+      - среднее (стандартное отклонение)
+      - медиана [25-й, 75-й процентили]
+      - минимум - максимум
+   - как категорию норма / не норма:
+      - число участников (процент).
+```{r}
+# , group_by, summarise
+# n, mean, median, sd, quantile, IQR
+bmi_stat <- final_data |> 
+  group_by(ARM) |> 
+  summarise(
+    n_all = n(),
+    n_missing = sum(is.na(BMI)),
+    Mean = round(mean(BMI), 1),
+    SD = round(sd(BMI), 1), 
+    Median = round(median(BMI), 1), 
+    Median_Q1 = round(quantile(BMI, 0.25), 1), 
+    Median_Q3 = round(quantile(BMI, 0.75), 1),
+    Min = round(min(BMI), 1),
+    Max = round(max(BMI), 1)
+    )
+
+# flextable
+flextable(bmi_stat) |> 
+  set_header_labels(
+    ARM = "Группа лечения",
+    n_all = "Всего N",
+    n_missing = "Пропуски (NA)",
+    Mean = "Среднее",
+    SD = "Стандартное отклонение",
+    Median = "Медиана",
+    Median_Q1 = "25-й перцентиль",
+    Median_Q3 = "75-й перцентиль",
+    Min = "Минимум",
+    Max = "Максимум"
+  ) |> 
+    autofit()
+
+# см. документацию https://davidgohel.github.io
+```
+  
+  Средний BMI в группе Xanomeline High Dose составил 25.4 (СО = 4.0), в группе Xanomeline Low Dose - 25.0 (СО = 4.3). Различия между группами незначительные (около 0.4), что свидетельствует об отсутствии существенного влияния дозы препарата на индекс массы тела участников
+
+Медианные значения также близки: 24.7 в группе High Dose и 24.1 в группе Low Dose
+
+Разброс значений в группе Low Dose шире (17.4 -39.8, чем в группе High Dose (15.0 - 35.5)
+
+  - как категорию норма / не норма:
+      - число участников (процент).
+```{r}
+bmi_stat_cat <- final_data |>
+  count(ARM, BMI_CAT) |>           
+  group_by(ARM) |>   
+  mutate(
+    Percent = round(n / sum(n) * 100, 1)
+  )
+
+# Оформление в flextable
+flextable(bmi_stat_cat) |> 
+  set_header_labels(
+    ARM = "Группа лечения",
+    `Норма` = "Норма, n (%)",
+    `Не норма` = "Не норма, n (%)"
+  ) |> 
+  autofit()
+```
+
+46 участников (54.8%) имеют нормальный BMI, и 38 участников (45.2%) имеют BMI вне нормы,кол-во участников в обоих группах практически одинаково, что довольно хорошо для дальнейшего исследования.
+
+4. Вычислите число аллелей ε4 (0 / 1 / 2) у каждого участника и представьте BMI по этим категориям.
+
+```{r}
+final_data_allel <- final_data |> 
+  mutate(
+    E4_count = str_count(`Генотип APOE`, "4")
+  )
+
+```
+
+```{r}
+
+ table(final_data_allel$E4_count) 
+```
+
+```{r}
+genotype_dist <- final_data_allel |> 
+  count(ARM, `Генотип APOE`) |> 
+  group_by(ARM) |> 
+  mutate(
+    percent = round(n / sum(n) * 100, 1)
+  )
+```
+
+```{r}
+genotype_stats <- final_data_allel %>%
+  group_by(`Генотип APOE`) %>%
+  summarise(
+   n_all = n(),
+    n_missing = sum(is.na(BMI)),
+    Mean = round(mean(BMI), 1),
+    SD = round(sd(BMI), 1), 
+    Median = round(median(BMI), 1), 
+    Median_Q1 = round(quantile(BMI, 0.25), 1), 
+    Median_Q3 = round(quantile(BMI, 0.75), 1),
+    Min = round(min(BMI), 1),
+    Max = round(max(BMI), 1)
+    )
+    
+#flextable
+flextable(genotype_stats) |> 
+  set_header_labels(
+    E4_COUNT = "Число аллелей ε4",
+    n_all = "Всего N",
+    n_missing = "Пропуски (NA)",
+    Mean = "Среднее",
+    SD = "СО",
+    Median = "Медиана",
+    Median_Q1 = "25-й перцентиль",
+    Median_Q3 = "75-й перцентиль",
+    Min = "Минимум",
+    Max = "Максимум"
+  ) |> 
+  autofit()
+```
+Наибольшее число участников имеют генотипы ε3/ε3 (n=64) и ε3/ε4 (n=66). 
+
+Средний BMI по генотипам варьирует в диапазоне:
+Наименьшее среднее у ε4/ε4 составляет 23.7 (n = 8)
+Наибольшее среднее у ε3/ε3 составляет 25.7 (n = 64)
+Разница между крайними значениями составляет 2.0
+
+Судя по данным APOE не оказывает влияения на BMI, можно заметить, что у носителей ε4/ε4 среднее меньше, чем у остальных, но это скорее всего связано с количеством пациентов в выборке. 
 
 ### 3.3. Анализ генотипа
 
