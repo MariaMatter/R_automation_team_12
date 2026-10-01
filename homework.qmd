@@ -9,7 +9,7 @@ author:
      roles: Пациенты (1.1)
    - name: Валентина Выноградская
      url: https://github.com/valentinabarsegian2026-cmd
-     roles: Витальные показатели (1.3)
+     roles: Витальные показатели (1.3), Анализ лабораторных результатов (3.1)
    - name: Марасанова Екатерина
      url: https://github.com/mrsnightkin
      roles: Генотип APOE (1.4)
@@ -116,7 +116,8 @@ sum(df$ARM == "Screen Failure") / nrow(df) * 100
 ```{r}
 # filter
 df <- df |>
-  filter(ARM == c('Xanomeline Low Dose', 'Xanomeline High Dose'))
+  filter(ARM == 'Xanomeline Low Dose' | ARM ==  'Xanomeline High Dose')
+df
 ```
 Стало 84
 
@@ -486,14 +487,157 @@ values_presence
 3. Оформите результаты в таблицы `flextable` с заголовками на русском или английском языке с указанием единиц измерения.
 4. Кратко прокомментируйте результаты, приведённые в таблицах.
 
-```{r}
+
 # mutate, case_when, group_by, summarise
 # n, mean, median, sd, quantile, IQR
-
 # round, str_c, paste0
 # flextable
 # см. документацию https://davidgohel.github.io
+
+# 1. Статистики по группам лечения
+```{r}
+lab_stats <- all_data %>%
+  group_by(ARM) %>%
+  summarise(
+    across(
+      c(HGB, TSH),
+      list(
+        n = ~sum(!is.na(.x)),
+        missing = ~sum(is.na(.x)),
+        mean = ~mean(.x, na.rm = TRUE),
+        sd = ~sd(.x, na.rm = TRUE),
+        median = ~median(.x, na.rm = TRUE),
+        q25 = ~quantile(.x, 0.25, na.rm = TRUE),
+        q75 = ~quantile(.x, 0.75, na.rm = TRUE),
+        min = ~min(.x, na.rm = TRUE),
+        max = ~max(.x, na.rm = TRUE)
+      )
+    )
+  )
+
+lab_stats
 ```
+
+
+# 2. Создаём группы носителей и неносителей аллеля ε4
+```{r}
+all_data <- all_data %>%
+  mutate(
+    APOE4 = case_when(
+      grepl("ε4", `Генотип APOE`) ~ "Носитель ε4",
+      !grepl("ε4", `Генотип APOE`) ~ "Не носитель ε4",
+      TRUE ~ NA_character_
+    )
+  )
+
+apoe_stats <- all_data %>%
+  group_by(APOE4) %>%
+  summarise(
+    across(
+      c(HGB, TSH),
+      list(
+        n = ~sum(!is.na(.x)),
+        missing = ~sum(is.na(.x)),
+        mean = ~mean(.x, na.rm = TRUE),
+        sd = ~sd(.x, na.rm = TRUE),
+        median = ~median(.x, na.rm = TRUE),
+        q25 = ~quantile(.x, 0.25, na.rm = TRUE),
+        q75 = ~quantile(.x, 0.75, na.rm = TRUE),
+        min = ~min(.x, na.rm = TRUE),
+        max = ~max(.x, na.rm = TRUE)
+      )
+    )
+  )
+
+apoe_stats
+```
+
+# 3. Оформляем результаты в таблицы
+
+```{r}
+
+library(tidyr)
+library(flextable)
+
+# Таблица по группам лечения
+lab_table_data <- lab_stats %>%
+  pivot_longer(
+    cols = -ARM,
+    names_to = c("Показатель", ".value"),
+    names_pattern = "(HGB|TSH)_(.*)"
+  ) %>%
+  mutate(
+    Показатель = recode(
+      Показатель,
+      HGB = "HGB, mmol/L",
+      TSH = "TSH, mU/L"
+    )
+  )
+
+lab_table <- lab_table_data %>%
+  flextable() %>%
+  set_header_labels(
+    ARM = "Группа лечения",
+    Показатель = "Показатель",
+    n = "n",
+    missing = "Пропущено",
+    mean = "Среднее",
+    sd = "SD",
+    median = "Медиана",
+    q25 = "Q25",
+    q75 = "Q75",
+    min = "Минимум",
+    max = "Максимум"
+  ) %>%
+  colformat_double(digits = 2) %>%
+  autofit()
+
+lab_table
+
+# Таблица по носительству аллеля ε4
+
+apoe_table_data <- apoe_stats %>%
+  pivot_longer(
+    cols = -APOE4,
+    names_to = c("Показатель", ".value"),
+    names_pattern = "(HGB|TSH)_(.*)"
+  ) %>%
+  mutate(
+    Показатель = recode(
+      Показатель,
+      HGB = "HGB, mmol/L",
+      TSH = "TSH, mU/L"
+    )
+  )
+
+apoe_table <- apoe_table_data %>%
+  flextable() %>%
+  set_header_labels(
+    APOE4 = "Группа APOE ε4",
+    Показатель = "Показатель",
+    n = "n",
+    missing = "Пропущено",
+    mean = "Среднее",
+    sd = "SD",
+    median = "Медиана",
+    q25 = "Q25",
+    q75 = "Q75",
+    min = "Минимум",
+    max = "Максимум"
+  ) %>%
+  colformat_double(digits = 2) %>%
+  autofit()
+
+apoe_table
+
+```
+
+# 4. Комментарий по полученным данным
+По группам лечения среднее значение HGB было несколько выше в группе Xanameline High Dose (8.87 mmol/L), чем в группе Xanomeline Low Dose (8.62 mmol/L). Медианы HGB составили 8.87 и 8.62 mmol/L соответственно. Значения TSH в группах лечения были близкими: средние значения составили 1.57 mU/L в группе High Dose и 1.64 mU/L в группе Low Dose.
+
+При сравнении по носительству аллеля APOE ε4 у носителей среднее значение HGB составило 8.87 mmol/L, а у неносителей — 8.64 mmol/L. Среднее значение TSH у носителей и не носителей одинаково и составляет 1.60 mU/L.
+
+Количество пропущенных значений было небольшим (не больше 3) во всех рассматриваемых группах. Описательные статистики показывают небольшие различия между группами, однако по ним нельзя сделать вывод о статистической значимости этих различий
 
 ### 3.2. Анализ витальных показателей
 
