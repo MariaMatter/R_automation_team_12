@@ -27,6 +27,7 @@ format:
 #| include: false
 
 library(tidyverse)
+library(flextable)
 ```
 
 Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
@@ -158,20 +159,21 @@ head(dm)
 # read_csv
 lab_df <- read.csv('data/lb.csv')
 # select, rename
-lab_df <- lab_df |> 
-   select('USUBJID', 'LBTESTCD', 'LBTEST', 'LBSTRESN', 'VISIT') |> 
-   rename('ID'='USUBJID')
+lab_df <- lab_df |>
+  select('USUBJID', 'LBTESTCD', 'LBTEST', 'LBSTRESN', 'VISIT') |>
+  rename('ID' = 'USUBJID')
 lab_df
 # distinct, count
 ```
 Данные имеют длинный формат, т.к. есть не уникальные строки в колонке ID, которые содержат различную информацию в других столбцах (визит, лабораторный тест, и т.д.).
 
 ```{r}
-lab_df |> 
+lab_df |>
   count(ID) |>
   summarise(
-   min_rows = min(n),
-   max_rows = max(n))
+    min_rows = min(n),
+    max_rows = max(n)
+  )
 ```
 Минимальное число строк на пациента - 12, максимальное - 58
 
@@ -180,15 +182,15 @@ lab_df |>
 
 ```{r}
 #визиты и лабораторные измерения
-lab_df |> 
+lab_df |>
   distinct(VISIT, LBTESTCD, LBTEST)
 ```
 
 ```{r}
 #отдельно визиты с витамином В12
 lab_df |>
-   filter(LBTESTCD == 'VITB12') |>
-   distinct(VISIT)
+  filter(LBTESTCD == 'VITB12') |>
+  distinct(VISIT)
 ```
 
 4. Оставьте только участников своей команды.
@@ -197,7 +199,7 @@ lab_df |>
 ```{r}
 # semi_join
 lab_df_filtered <- lab_df |>
-   semi_join(dm, by = "ID")
+  semi_join(dm, by = "ID")
 lab_df_filtered
 ```
 
@@ -205,8 +207,7 @@ lab_df_filtered
 
 ```{r}
 lab_df_filtered_sc1 <- lab_df_filtered |>
-   filter(VISIT == 'SCREENING 1', 
-   LBTESTCD %in% c('HGB', 'TSH'))
+  filter(VISIT == 'SCREENING 1', LBTESTCD %in% c('HGB', 'TSH'))
 lab_df_filtered_sc1
 ```
 6. После фильтрации выведите число измерений каждого показателя.
@@ -214,7 +215,7 @@ lab_df_filtered_sc1
 ```{r}
 # filter
 lab_df_filtered_sc1 |>
-   count(LBTESTCD)
+  count(LBTESTCD)
 ```
 
 7. Переведите данные в широкий формат и сохраните в переменную `lb_wide`.
@@ -229,8 +230,8 @@ lab_df_filtered_sc1 |>
 lb_wide <- lab_df_filtered_sc1 |>
   select(ID, LBTESTCD, LBSTRESN) |>
   pivot_wider(
-   names_from = LBTESTCD,
-   values_from = LBSTRESN
+    names_from = LBTESTCD,
+    values_from = LBSTRESN
   )
 lb_wide
 ```
@@ -297,7 +298,7 @@ vs <- vs %>%
 vs <- vs %>%
   filter(
     (VISIT == "SCREENING 1" & VSTESTCD %in% c("HEIGHT", "WEIGHT")) |
-    (VISIT == "WEEK 4" & VSTESTCD == "WEIGHT")
+      (VISIT == "WEEK 4" & VSTESTCD == "WEIGHT")
   )
 ```
 
@@ -826,11 +827,69 @@ flextable(genotype_stats) |>
 4. Кратко прокомментируйте результаты, приведённые в таблицах.
 
 ```{r}
-# mutate, case_when, group_by, summarise
-# n, mean, median, sd, quantile, IQR
-# flextable
-# см. документацию https://davidgohel.github.io
+all_data |>
+  group_by(ARM, `Генотип APOE`) |>
+  summarise(
+    n = sum(n())
+  ) |>
+  mutate(
+    `percentage, %` = n / sum(n) * 100
+  ) |>
+  ungroup()
 ```
+
+```{r}
+stats <- function(data, param) {
+  summarise(
+    data,
+    n = sum(!is.na(.data[[param]])),
+    n_NA = sum(is.na(.data[[param]])),
+    `Mean (SD)` = sprintf(
+      "%.2f (%.2f)", #не обошлось без гугла
+      mean(.data[[param]], na.rm = TRUE),
+      sd(.data[[param]], na.rm = TRUE)
+    ),
+    `Median [Q1, Q3]` = sprintf(
+      "%.2f [%.2f, %.2f]",
+      median(.data[[param]], na.rm = TRUE),
+      quantile(.data[[param]], 0.25, na.rm = TRUE),
+      quantile(.data[[param]], 0.75, na.rm = TRUE)
+    ),
+    `Min - Max` = sprintf(
+      "%.2f - %.2f",
+      min(.data[[param]], na.rm = TRUE),
+      max(.data[[param]], na.rm = TRUE)
+    ),
+    .by = `Генотип APOE`
+  )
+}
+```
+
+```{r}
+all_data |>
+  mutate(BMI = `WEIGHT_SCREENING 1` / (`HEIGHT_SCREENING 1` / 100)^2) |>
+  (\(df) {
+    stats(df, "BMI") |>
+      left_join(
+        stats(df, "HGB"),
+        by = "Генотип APOE",
+        suffix = c(".BMI", ".HGB")
+      ) |>
+      left_join(stats(df, "TSH"), by = "Генотип APOE", suffix = c("", ".TSH"))
+  })() |>
+  flextable() |>
+  add_header_row(
+    values = c("Генотип", "BMI, kg/m²", "HGB, mmol/L", "TSH, mU/L"),
+    colwidths = c(1, 5, 5, 5)
+  ) |>
+  align(align = "center", part = "header") |>
+  autofit()
+```
+### Комментарий по таблицам:
+По некоторым наборам данных мало наблюдений (ε2/ε2, ε2/ε4, ε4/ε4).
+На первый взгляд никаких особо заметных тенденций к изменению BMI, HGB или TSH в зависимости от генотипа не наблюдается.
+Почти во всех группах по всем показателям среднее и медиана близки, что говорит о равномерности распределения данных вокруг центра
+По показателю TSH очень большой разброс данных
 
 ## 4. Дополнительные задания
 
